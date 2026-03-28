@@ -16,9 +16,14 @@ internal class Program
         ILogger logger = factory.CreateLogger("3DNS");
 
         // Load configuration
-        string domain = ConfigHelper.GetValue(logger, "Domain");
-        string apiKey = ConfigHelper.GetValue(logger, "ApiKey");
-        string apiSecret = ConfigHelper.GetValue(logger, "ApiSecret");
+        string? domain = ConfigHelper.GetValue(logger, "Domain");
+        string? apiKey = ConfigHelper.GetValue(logger, "ApiKey");
+        string? apiSecret = ConfigHelper.GetValue(logger, "ApiSecret");
+        if(domain is null || apiKey is null || apiSecret is null)
+        {
+            logger.LogError("Missing required configuration.");
+            return;
+        }
 
         // Run dynamic DNS update
         DynDNS.Run(logger, domain, apiKey, apiSecret);
