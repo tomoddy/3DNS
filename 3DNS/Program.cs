@@ -19,5 +19,8 @@ internal class Program
         string domain = ConfigHelper.GetValue(logger, "Domain");
         string apiKey = ConfigHelper.GetValue(logger, "ApiKey");
         string apiSecret = ConfigHelper.GetValue(logger, "ApiSecret");
+
+        // Run dynamic DNS update
+        DynDNS.Run(logger, domain, apiKey, apiSecret);
     }
 }
