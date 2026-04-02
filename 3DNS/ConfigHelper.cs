@@ -24,7 +24,7 @@ namespace _3DNS
                 return null;
             }
 
-            logger.LogInformation("{key} loaded successfully ({value}).", key, value);
+            logger.LogInformation("{key} loaded successfully.", key);
             return value;
         }
     }

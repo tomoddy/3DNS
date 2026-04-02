@@ -12,14 +12,20 @@ internal class Program
     private static void Main()
     {
         // Create logger
-        using ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddConsole());
+        using ILoggerFactory factory = LoggerFactory.Create(builder =>
+            builder.AddSimpleConsole(options =>
+            {
+                options.IncludeScopes = true;
+                options.SingleLine = true;
+                options.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
+            }));
         ILogger logger = factory.CreateLogger("3DNS");
 
         // Load configuration
         string? domain = ConfigHelper.GetValue(logger, "Domain");
         string? apiKey = ConfigHelper.GetValue(logger, "ApiKey");
         string? apiSecret = ConfigHelper.GetValue(logger, "ApiSecret");
-        if(domain is null || apiKey is null || apiSecret is null)
+        if (domain is null || apiKey is null || apiSecret is null)
         {
             logger.LogError("Missing required configuration.");
             return;
