@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Npgsql;
 using System.Net;
 
 namespace _3DNS
@@ -16,7 +17,8 @@ namespace _3DNS
         /// <param name="domain">Domain</param>
         /// <param name="apiKey">Api key</param>
         /// <param name="apiSecret">Api secret</param>
-        public static void Run(ILogger logger, string domain, string apiKey, string apiSecret)
+        /// <param name="connectionString">Database connection string</param>
+        public static void Run(ILogger logger, string domain, string apiKey, string apiSecret, string connectionString)
         {
             // Create HTTP client and request
             logger.LogInformation("Getting current public IP address");
@@ -104,6 +106,23 @@ namespace _3DNS
                 return;
             }
             logger.LogInformation("Successfully updated A record");
+
+            // Updated database
+            logger.LogInformation("Writing DNS update to database");
+            try
+            {
+                using NpgsqlConnection connection = new(connectionString);
+                connection.Open();
+                using NpgsqlCommand command = new("INSERT INTO \"DnsUpdates\" (\"IpAddress\", \"RecordedAt\") VALUES (@ip, @recordedAt)", connection);
+                command.Parameters.AddWithValue("ip", ip);
+                command.Parameters.AddWithValue("recordedAt", DateTime.UtcNow);
+                command.ExecuteNonQuery();
+                logger.LogInformation("DNS update written to database");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to write DNS update to database");
+            }
         }
     }
 }

@@ -25,7 +25,8 @@ internal class Program
         string? domain = ConfigHelper.GetValue(logger, "Domain");
         string? apiKey = ConfigHelper.GetValue(logger, "ApiKey");
         string? apiSecret = ConfigHelper.GetValue(logger, "ApiSecret");
-        if (domain is null || apiKey is null || apiSecret is null)
+        string? connectionString = ConfigHelper.GetValue(logger, "ConnectionString");
+        if (domain is null || apiKey is null || apiSecret is null || connectionString is null)
         {
             logger.LogError("Missing required configuration.");
             return;
