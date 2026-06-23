@@ -19,5 +19,10 @@
         /// Domains to keep pointed at the current public IP.
         /// </summary>
         public List<string> Domains { get; set; } = [];
+
+        /// <summary>
+        /// API key for the Ting notification endpoint on api.tzer0m.co.uk.
+        /// </summary>
+        public string TingApiKey { get; set; } = string.Empty;
     }
 }

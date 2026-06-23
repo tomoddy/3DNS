@@ -19,7 +19,7 @@ namespace _3DNS
         /// <param name="apiKey">Api key</param>
         /// <param name="apiSecret">Api secret</param>
         /// <param name="connectionString">Database connection string</param>
-        public static void Run(ILogger logger, string domain, string ip, string apiKey, string apiSecret, string connectionString)
+        public static Outcome Run(ILogger logger, string domain, string ip, string apiKey, string apiSecret, string connectionString)
         {
             // Create HTTP client and request
             logger.LogInformation("Getting A record for {domain}", domain);
@@ -36,7 +36,7 @@ namespace _3DNS
             catch (HttpRequestException ex)
             {
                 logger.LogError(ex, "Failed to get A record for {domain}", domain);
-                return;
+                return Outcome.Failure;
             }
             logger.LogInformation("Successfully got A record for {domain}", domain);
 
@@ -45,12 +45,12 @@ namespace _3DNS
             if (records is null)
             {
                 logger.LogError("Failed to parse A record for {domain}", domain);
-                return;
+                return Outcome.Failure;
             }
             if (records.Count != 1)
             {
                 logger.LogError("Unexpected number of A records for {domain} (expected 1): {count}", domain, records.Count);
-                return;
+                return Outcome.Failure;
             }
 
             // Check if record already has correct IP
@@ -58,7 +58,7 @@ namespace _3DNS
             if (record.Data == ip)
             {
                 logger.LogInformation("A record for {domain} is already up to date", domain);
-                return;
+                return Outcome.SuccessNoChange;
             }
             logger.LogWarning("IP address for {domain} has changed from {oldIp} to {newIp}", domain, record.Data, ip);
 
@@ -78,7 +78,7 @@ namespace _3DNS
             catch (HttpRequestException ex)
             {
                 logger.LogError(ex, "Failed to update A record");
-                return;
+                return Outcome.Failure;
             }
             logger.LogInformation("Successfully updated A record");
 
@@ -93,10 +93,12 @@ namespace _3DNS
                 command.Parameters.AddWithValue("recordedAt", DateTime.UtcNow);
                 command.ExecuteNonQuery();
                 logger.LogInformation("DNS update written to database");
+                return Outcome.SuccessWithChange;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to write DNS update to database");
+                return Outcome.Failure;
             }
         }
     }

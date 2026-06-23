@@ -57,9 +57,30 @@ internal class Program
         logger.LogInformation("Current public IP address: {ip}", ip);
 
         // Run dynamic DNS update for each configured domain
+        Dictionary<string, Outcome> results = [];
         foreach (string domain in settings.Domains)
         {
-            DynDNS.Run(logger, domain, ip, settings.GoDaddy.ApiKey, settings.GoDaddy.ApiSecret, settings.ConnectionString);
+            results[domain] = DynDNS.Run(logger, domain, ip, settings.GoDaddy.ApiKey, settings.GoDaddy.ApiSecret, settings.ConnectionString);
+        }
+
+        // Send notification if any domain changed or failed
+        if (results.Values.Any(o => o != Outcome.SuccessNoChange))
+        {
+            string body = string.Join("\n", results.Select(r => $"{r.Key}: {DescribeOutcome(r.Value)}"));
+            TingClient.Send(logger, settings.TingApiKey, "3DNS Alert", body);
         }
     }
+
+    /// <summary>
+    /// Describes an outcome in human-readable form for notifications
+    /// </summary>
+    /// <param name="outcome">Outcome</param>
+    /// <returns>Description</returns>
+    private static string DescribeOutcome(Outcome outcome) => outcome switch
+    {
+        Outcome.Failure => "Failed to Update",
+        Outcome.SuccessWithChange => "IP Changed",
+        Outcome.SuccessNoChange => "No Change",
+        _ => "Unknown"
+    };
 }
