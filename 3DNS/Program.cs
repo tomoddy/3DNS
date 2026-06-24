@@ -2,6 +2,7 @@
 using _3DNS.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 
 /// <summary>
 /// Entry point
@@ -28,7 +29,7 @@ internal class Program
         AppSettings settings = new();
         configuration.Bind(settings);
 
-        if (string.IsNullOrEmpty(settings.GoDaddy.ApiKey) || string.IsNullOrEmpty(settings.GoDaddy.ApiSecret) || string.IsNullOrEmpty(settings.ConnectionString) || settings.Domains.Count == 0)
+        if (string.IsNullOrEmpty(settings.GoDaddy.ApiKey) || string.IsNullOrEmpty(settings.GoDaddy.ApiSecret) || string.IsNullOrEmpty(settings.ConnectionString) || string.IsNullOrEmpty(settings.TingApiKey) || settings.Domains.Count == 0)
         {
             logger.LogError("Missing required configuration.");
             return;
@@ -60,7 +61,13 @@ internal class Program
         Dictionary<string, Outcome> results = [];
         foreach (string domain in settings.Domains)
         {
-            results[domain] = DynDNS.Run(logger, domain, ip, settings.GoDaddy.ApiKey, settings.GoDaddy.ApiSecret, settings.ConnectionString);
+            results[domain] = DynDNS.Run(logger, domain, ip, settings.GoDaddy.ApiKey, settings.GoDaddy.ApiSecret);
+        }
+
+        // Write a single database record if any domain actually changed
+        if (results.Values.Any(o => o == Outcome.SuccessWithChange))
+        {
+            WriteIpChange(logger, settings.ConnectionString, ip);
         }
 
         // Send notification if any domain changed or failed
@@ -68,6 +75,31 @@ internal class Program
         {
             string body = string.Join("\n", results.Select(r => $"{r.Key}: {DescribeOutcome(r.Value)}"));
             TingClient.Send(logger, settings.TingApiKey, "3DNS Alert", body);
+        }
+    }
+
+    /// <summary>
+    /// Writes a single IP change record to the database
+    /// </summary>
+    /// <param name="logger">Logger</param>
+    /// <param name="connectionString">Database connection string</param>
+    /// <param name="ip">New IP address</param>
+    private static void WriteIpChange(ILogger logger, string connectionString, string ip)
+    {
+        logger.LogInformation("Writing DNS update to database");
+        try
+        {
+            using NpgsqlConnection connection = new(connectionString);
+            connection.Open();
+            using NpgsqlCommand command = new("INSERT INTO \"DnsUpdates\" (\"IpAddress\", \"RecordedAt\") VALUES (@ip, @recordedAt)", connection);
+            command.Parameters.AddWithValue("ip", ip);
+            command.Parameters.AddWithValue("recordedAt", DateTime.UtcNow);
+            command.ExecuteNonQuery();
+            logger.LogInformation("DNS update written to database");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to write DNS update to database");
         }
     }
 

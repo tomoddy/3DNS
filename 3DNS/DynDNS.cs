@@ -1,7 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Npgsql;
-using System.Net;
 
 namespace _3DNS
 {
@@ -18,8 +16,7 @@ namespace _3DNS
         /// <param name="ip">Current public IP address</param>
         /// <param name="apiKey">Api key</param>
         /// <param name="apiSecret">Api secret</param>
-        /// <param name="connectionString">Database connection string</param>
-        public static Outcome Run(ILogger logger, string domain, string ip, string apiKey, string apiSecret, string connectionString)
+        public static Outcome Run(ILogger logger, string domain, string ip, string apiKey, string apiSecret)
         {
             // Create HTTP client and request
             logger.LogInformation("Getting A record for {domain}", domain);
@@ -80,26 +77,10 @@ namespace _3DNS
                 logger.LogError(ex, "Failed to update A record");
                 return Outcome.Failure;
             }
-            logger.LogInformation("Successfully updated A record");
 
-            // Updated database
-            logger.LogInformation("Writing DNS update to database");
-            try
-            {
-                using NpgsqlConnection connection = new(connectionString);
-                connection.Open();
-                using NpgsqlCommand command = new("INSERT INTO \"DnsUpdates\" (\"IpAddress\", \"RecordedAt\") VALUES (@ip, @recordedAt)", connection);
-                command.Parameters.AddWithValue("ip", ip);
-                command.Parameters.AddWithValue("recordedAt", DateTime.UtcNow);
-                command.ExecuteNonQuery();
-                logger.LogInformation("DNS update written to database");
-                return Outcome.SuccessWithChange;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to write DNS update to database");
-                return Outcome.Failure;
-            }
+            // Return success
+            logger.LogInformation("Successfully updated A record");
+            return Outcome.SuccessWithChange;
         }
     }
 }
